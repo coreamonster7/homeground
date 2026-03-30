@@ -152,10 +152,19 @@ const Navbar = ({ onAdminToggle, lang, setLang }: { onAdminToggle: () => void, l
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isMobileMenuOpen]);
+
   return (
     <nav className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 ${isScrolled ? 'bg-black/90 backdrop-blur-xl py-4 border-b border-white/5' : 'bg-transparent py-8'}`}>
-      <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-        <div className="text-2xl font-bold tracking-tighter flex items-center gap-2 group cursor-pointer">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 flex justify-between items-center">
+        <div className="text-xl md:text-2xl font-bold tracking-tighter flex items-center gap-2 group cursor-pointer">
           <span className="group-hover:text-sky-400 transition-colors duration-300">HOMEGROUND</span>
         </div>
         
@@ -260,14 +269,14 @@ const Hero = ({ config, lang }: { config: SiteConfig, lang: Lang }) => {
       />
       <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/60 z-0"></div>
       
-      <div className="relative z-10 text-center px-6 max-w-5xl">
+      <div className="relative z-10 text-center px-4 md:px-6 max-w-5xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1 }}
           className="mb-6"
         >
-          <span className="text-sky-400 text-[16px] uppercase tracking-[0.8em] font-bold">The Future of Investment</span>
+          <span className="text-sky-400 text-[10px] md:text-[16px] uppercase tracking-[0.3em] md:tracking-[0.8em] font-bold">The Future of Investment</span>
         </motion.div>
         
         {/* Soft Glow behind text */}
@@ -277,7 +286,7 @@ const Hero = ({ config, lang }: { config: SiteConfig, lang: Lang }) => {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.2, delay: 0.2 }}
-          className="text-7xl md:text-[10rem] font-serif italic mb-8 leading-none text-gradient tracking-tighter"
+          className="text-4xl sm:text-5xl md:text-[8rem] lg:text-[10rem] font-serif italic mb-8 leading-none text-gradient tracking-tighter break-words"
         >
           {lang === 'EN' ? config.heroTitle : t.heroTitle}
         </motion.h1>
@@ -285,7 +294,7 @@ const Hero = ({ config, lang }: { config: SiteConfig, lang: Lang }) => {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.4 }}
-          className="text-lg md:text-xl text-gray-400 mb-16 font-light tracking-[0.4em] max-w-3xl mx-auto uppercase"
+          className="text-sm md:text-xl text-gray-400 mb-12 md:mb-16 font-light tracking-[0.2em] md:tracking-[0.4em] max-w-3xl mx-auto uppercase px-4"
         >
           {lang === 'EN' ? config.heroSubtitle : t.heroSubtitle}
         </motion.p>
@@ -323,7 +332,7 @@ const WhyKorea = ({ config, lang }: { config: SiteConfig, lang: Lang }) => {
         <div className="grid md:grid-cols-2 gap-16 items-center">
           <div>
             <h2 className="text-xl uppercase tracking-[0.3em] text-sky-400 mb-4 font-bold">{t.whyKorea}</h2>
-            <h3 className="text-4xl md:text-5xl font-serif mb-8 leading-tight text-white">
+            <h3 className="text-3xl md:text-5xl font-serif mb-8 leading-tight text-white">
               {t.whyKoreaTitle.includes('\n') ? (
                 <>
                   <span className="font-extralight block mb-2 opacity-90">{t.whyKoreaTitle.split('\n')[0]}</span>
@@ -383,52 +392,58 @@ const Portfolio = ({ items, lang }: { items: PortfolioItem[], lang: Lang }) => {
   ];
 
   return (
-    <section id="portfolio" className="py-24 px-6 bg-[#050505]">
+    <section id="portfolio" className="py-24 px-4 md:px-6 bg-[#050505]">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-20">
+        <div className="mb-12 md:mb-20">
           <h2 className="text-sm uppercase tracking-[0.3em] text-sky-400 mb-4">{t.portfolio}</h2>
-          <h3 className="text-4xl md:text-5xl font-serif">{t.curatedInvestments}</h3>
+          <h3 className="text-3xl md:text-5xl font-serif">{t.curatedInvestments}</h3>
         </div>
 
-        {categories.map((cat) => {
-          const catItems = items.filter(item => item.category === cat.id);
-          if (catItems.length === 0) return null;
+        {items.length === 0 ? (
+          <div className="py-20 text-center border border-white/10 rounded-3xl bg-white/5">
+            <p className="text-gray-400 italic">Portfolio items are being loaded...</p>
+          </div>
+        ) : (
+          categories.map((cat) => {
+            const catItems = items.filter(item => item.category?.trim() === cat.id);
+            if (catItems.length === 0) return null;
 
-          return (
-            <div key={cat.id} className="mb-24 last:mb-0">
-              <div className="flex items-center gap-6 mb-12">
-                <h4 className="text-sm md:text-lg font-bold text-white uppercase tracking-widest whitespace-nowrap">{cat.label}</h4>
-                <div className="h-[1px] flex-1 bg-gradient-to-r from-sky-500/50 to-transparent"></div>
-              </div>
-              
-              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-                {catItems.map((item, i) => (
-                  <motion.div 
-                    key={item.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className="group cursor-pointer"
-                  >
-                    <div className="relative aspect-video rounded-2xl overflow-hidden mb-6">
-                      <img 
-                        src={item.image} 
-                        alt={item.title} 
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-6">
-                        <p className="text-white text-sm font-medium line-clamp-2">{item.description}</p>
+            return (
+              <div key={cat.id} className="mb-16 md:mb-24 last:mb-0">
+                <div className="flex items-center gap-4 md:gap-6 mb-8 md:mb-12">
+                  <h4 className="text-sm md:text-lg font-bold text-white uppercase tracking-widest whitespace-nowrap">{cat.label}</h4>
+                  <div className="h-[1px] flex-1 bg-gradient-to-r from-sky-500/50 to-transparent"></div>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+                  {catItems.map((item, i) => (
+                    <motion.div 
+                      key={item.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="group cursor-pointer"
+                    >
+                      <div className="relative aspect-video rounded-2xl overflow-hidden mb-4 md:mb-6">
+                        <img 
+                          src={item.image} 
+                          alt={item.title} 
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-4 md:p-6">
+                          <p className="text-white text-xs md:text-sm font-medium line-clamp-2">{item.description}</p>
+                        </div>
                       </div>
-                    </div>
-                    <h5 className="text-xl font-bold mb-2 group-hover:text-sky-400 transition-colors">{item.title}</h5>
-                    <p className="text-gray-400 mb-2 flex items-center gap-2 font-semibold text-sm"><MapPin size={14} className="text-sky-400" /> {item.location}</p>
-                  </motion.div>
-                ))}
+                      <h5 className="text-lg md:text-xl font-bold mb-1 md:mb-2 group-hover:text-sky-400 transition-colors">{item.title}</h5>
+                      <p className="text-gray-400 mb-2 flex items-center gap-2 font-semibold text-xs md:text-sm"><MapPin size={14} className="text-sky-400" /> {item.location}</p>
+                    </motion.div>
+                  ))}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </section>
   );
@@ -933,7 +948,7 @@ export default function App() {
   if (!config) return <div className="h-screen flex items-center justify-center bg-black text-sky-400 animate-pulse">Loading HOMEGROUND...</div>;
 
   return (
-    <div className="min-h-screen selection:bg-sky-500 selection:text-white">
+    <div className="min-h-screen selection:bg-sky-500 selection:text-white overflow-x-hidden">
       <Navbar onAdminToggle={() => setIsAdminOpen(true)} lang={lang} setLang={setLang} />
       
       <Hero config={config} lang={lang} />
