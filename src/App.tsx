@@ -901,8 +901,33 @@ export default function App() {
   const [lang, setLang] = useState<Lang>('EN');
 
   useEffect(() => {
-    fetch('/api/portfolio').then(res => res.json()).then(setPortfolio);
-    fetch('/api/config').then(res => res.json()).then(setConfig);
+    fetch('/api/portfolio')
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch portfolio');
+        return res.json();
+      })
+      .then(setPortfolio)
+      .catch(err => {
+        console.error('Portfolio fetch error:', err);
+        // Fallback to empty portfolio if API fails
+        setPortfolio([]);
+      });
+
+    fetch('/api/config')
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch config');
+        return res.json();
+      })
+      .then(setConfig)
+      .catch(err => {
+        console.error('Config fetch error:', err);
+        // Fallback config if API fails (useful for static hosting or local dev)
+        setConfig({
+          heroTitle: "HOMEGROUND",
+          heroSubtitle: "Your Secure Gateway to Premium Korean Real Estate",
+          whyKoreaText: "Korea is the world's safest investment destination. With top-tier security and a culture of respect, your assets are protected in the most stable environment."
+        });
+      });
   }, []);
 
   if (!config) return <div className="h-screen flex items-center justify-center bg-black text-sky-400 animate-pulse">Loading HOMEGROUND...</div>;
