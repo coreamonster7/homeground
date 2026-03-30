@@ -210,6 +210,18 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  app.get("/api/admin-config", (req, res) => {
+    const db = getDb();
+    res.json(db.adminConfig || { username: "admin", password: "5252" });
+  });
+
+  app.post("/api/admin-config", (req, res) => {
+    const db = getDb();
+    db.adminConfig = req.body;
+    saveDb(db);
+    res.json({ success: true });
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

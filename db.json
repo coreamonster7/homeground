@@ -134,5 +134,9 @@
     "heroTitle": "HOMEGROUND",
     "heroSubtitle": "Your Secure Gateway to Premium Korean Real Estate",
     "whyKoreaText": "Korea is the world's safest investment destination. With top-tier security and a culture of respect, your assets are protected in the most stable environment."
+  },
+  "adminConfig": {
+    "username": "admin",
+    "password": "5252"
   }
 }

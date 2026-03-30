@@ -16,6 +16,7 @@ import {
   Trash2, 
   Edit,
   Save,
+  Check,
   ArrowRight
 } from 'lucide-react';
 import { PortfolioItem, Contact, SiteConfig } from './types';
@@ -382,7 +383,7 @@ const WhyKorea = ({ config, lang }: { config: SiteConfig, lang: Lang }) => {
   );
 };
 
-const Portfolio = ({ items, lang }: { items: PortfolioItem[], lang: Lang }) => {
+const Portfolio = ({ items, lang, onEdit }: { items: PortfolioItem[], lang: Lang, onEdit: (item: PortfolioItem) => void }) => {
   const t = translations[lang];
   const categories = [
     { id: '사옥', label: t.purposeOptions.hq },
@@ -422,7 +423,7 @@ const Portfolio = ({ items, lang }: { items: PortfolioItem[], lang: Lang }) => {
                       initial={{ opacity: 0, y: 20 }}
                       whileInView={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.05 }}
-                      className="group cursor-pointer"
+                      className="group cursor-pointer relative"
                     >
                       <div className="relative aspect-video rounded-2xl overflow-hidden mb-4 md:mb-6">
                         <img 
@@ -434,6 +435,17 @@ const Portfolio = ({ items, lang }: { items: PortfolioItem[], lang: Lang }) => {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-4 md:p-6">
                           <p className="text-white text-xs md:text-sm font-medium line-clamp-2">{item.description}</p>
                         </div>
+                        
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(item);
+                          }}
+                          className="absolute top-4 right-4 p-3 bg-black/60 backdrop-blur-md border border-white/20 rounded-full text-sky-400 opacity-0 group-hover:opacity-100 transition-all hover:bg-sky-500 hover:text-white"
+                          title="Edit Project"
+                        >
+                          <Edit size={16} />
+                        </button>
                       </div>
                       <h5 className="text-lg md:text-xl font-bold mb-1 md:mb-2 group-hover:text-sky-400 transition-colors">{item.title}</h5>
                       <p className="text-gray-400 mb-2 flex items-center gap-2 font-semibold text-xs md:text-sm"><MapPin size={14} className="text-sky-400" /> {item.location}</p>
@@ -624,34 +636,105 @@ const ContactForm = ({ lang }: { lang: Lang }) => {
 
 // --- Admin Dashboard ---
 
-const AdminDashboard = ({ onClose }: { onClose: () => void }) => {
+const AdminDashboard = ({ onClose, initialEditItem, onRefresh }: { onClose: () => void, initialEditItem?: PortfolioItem, onRefresh: () => void }) => {
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [config, setConfig] = useState<SiteConfig | null>(null);
+  const [adminCreds, setAdminCreds] = useState({ username: 'admin', password: '5252' });
   const [activeTab, setActiveTab] = useState<'portfolio' | 'contacts' | 'config'>('portfolio');
-  const [editingItem, setEditingItem] = useState<Partial<PortfolioItem> | null>(null);
+  const [editingItem, setEditingItem] = useState<Partial<PortfolioItem> | null>(initialEditItem || null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch('/api/portfolio').then(res => res.json()).then(setPortfolio);
-    fetch('/api/contacts').then(res => res.json()).then(setContacts);
-    fetch('/api/config').then(res => res.json()).then(setConfig);
+    const savedLogin = localStorage.getItem('admin_logged_in');
+    if (savedLogin === 'true') {
+      setIsLoggedIn(true);
+    }
+    // Fetch admin creds for login check (simplified)
+    fetch('/api/admin-config').then(res => res.json()).then(setAdminCreds);
   }, []);
 
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetch('/api/portfolio').then(res => res.json()).then(setPortfolio);
+      fetch('/api/contacts').then(res => res.json()).then(setContacts);
+      fetch('/api/config').then(res => res.json()).then(setConfig);
+    }
+  }, [isLoggedIn]);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === adminCreds.password) {
+      setIsLoggedIn(true);
+      localStorage.setItem('admin_logged_in', 'true');
+      setLoginError('');
+    } else {
+      setLoginError('Invalid password');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    localStorage.removeItem('admin_logged_in');
+  };
+
+  if (!isLoggedIn) {
+    return (
+      <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center p-6">
+        <div className="glass-card p-8 md:p-12 rounded-3xl w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 rounded-full bg-sky-500/20 flex items-center justify-center text-sky-400 border border-sky-500/30 mx-auto mb-4">
+              <Shield size={32} />
+            </div>
+            <h1 className="text-2xl font-bold">Admin Login</h1>
+            <p className="text-gray-400 text-sm mt-2">Please enter your credentials to continue</p>
+          </div>
+          
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-sm uppercase tracking-widest text-gray-300 font-bold">Admin Password</label>
+              <input 
+                required
+                type="password" 
+                className="w-full bg-white/5 border-2 border-white/30 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500 transition-colors text-lg font-medium"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Enter password"
+              />
+            </div>
+            {loginError && <p className="text-red-500 text-sm font-bold text-center">{loginError}</p>}
+            <button 
+              type="submit"
+              className="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-4 rounded-xl transition-all sky-glow"
+            >
+              Unlock Admin Access
+            </button>
+            <button 
+              type="button"
+              onClick={onClose}
+              className="w-full text-gray-400 hover:text-white transition-colors text-sm font-bold"
+            >
+              Cancel
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   const handleDeletePortfolio = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this item?')) return;
     await fetch(`/api/portfolio/${id}`, { method: 'DELETE' });
     setPortfolio(portfolio.filter(p => p.id !== id));
+    setDeleteConfirmId(null);
+    onRefresh();
   };
 
   const handleSavePortfolio = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingItem) return;
-
-    const method = editingItem.id ? 'POST' : 'POST'; // Simplified for this mock setup, usually PUT for edit
-    // Our mock server only has POST /api/portfolio which adds a new item. 
-    // Let's assume we want to support both. 
-    // Actually, the current server.ts only has POST /api/portfolio for adding.
-    // I'll update server.ts later if needed, but for now let's implement the UI.
 
     const response = await fetch('/api/portfolio', {
       method: 'POST',
@@ -667,8 +750,7 @@ const AdminDashboard = ({ onClose }: { onClose: () => void }) => {
         setPortfolio([...portfolio, savedItem]);
       }
       setEditingItem(null);
-      // Refresh to get latest state from server
-      fetch('/api/portfolio').then(res => res.json()).then(setPortfolio);
+      onRefresh();
     }
   };
 
@@ -680,6 +762,15 @@ const AdminDashboard = ({ onClose }: { onClose: () => void }) => {
       body: JSON.stringify(config)
     });
     alert('Configuration saved!');
+  };
+
+  const handleSaveAdminConfig = async () => {
+    await fetch('/api/admin-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(adminCreds)
+    });
+    alert('Admin credentials updated!');
   };
 
   return (
@@ -710,7 +801,17 @@ const AdminDashboard = ({ onClose }: { onClose: () => void }) => {
             </button>
           </div>
         </div>
-        <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full"><X /></button>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={handleLogout}
+            className="text-gray-400 hover:text-white transition-colors text-sm font-bold"
+          >
+            Logout
+          </button>
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+            <X />
+          </button>
+        </div>
       </header>
 
       <main className="flex-1 overflow-y-auto p-8">
@@ -809,18 +910,38 @@ const AdminDashboard = ({ onClose }: { onClose: () => void }) => {
                     <p className="text-xs text-gray-500 mt-1 line-clamp-1">{item.description}</p>
                   </div>
                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button 
-                      onClick={() => setEditingItem(item)}
-                      className="p-2 text-sky-400 hover:bg-sky-500/10 rounded-lg"
-                    >
-                      <Edit size={18} />
-                    </button>
-                    <button 
-                      onClick={() => handleDeletePortfolio(item.id)}
-                      className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    {deleteConfirmId === item.id ? (
+                      <div className="flex gap-2 items-center">
+                        <span className="text-[10px] text-red-500 font-bold uppercase">Confirm?</span>
+                        <button 
+                          onClick={() => handleDeletePortfolio(item.id)}
+                          className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                        >
+                          <Check size={14} />
+                        </button>
+                        <button 
+                          onClick={() => setDeleteConfirmId(null)}
+                          className="p-2 bg-white/10 text-gray-400 rounded-lg hover:bg-white/20"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <button 
+                          onClick={() => setEditingItem(item)}
+                          className="p-2 text-sky-400 hover:bg-sky-500/10 rounded-lg"
+                        >
+                          <Edit size={18} />
+                        </button>
+                        <button 
+                          onClick={() => setDeleteConfirmId(item.id)}
+                          className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
@@ -899,6 +1020,38 @@ const AdminDashboard = ({ onClose }: { onClose: () => void }) => {
               >
                 <Save size={18} /> Save Changes
               </button>
+
+              <div className="pt-12 border-t border-white/10">
+                <h2 className="text-2xl font-bold mb-8">Admin Security</h2>
+                <div className="space-y-6">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-xs uppercase tracking-widest text-gray-500">Admin Username</label>
+                      <input 
+                        type="text" 
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500"
+                        value={adminCreds.username}
+                        onChange={e => setAdminCreds({...adminCreds, username: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs uppercase tracking-widest text-gray-500">Admin Password</label>
+                      <input 
+                        type="password" 
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-sky-500"
+                        value={adminCreds.password}
+                        onChange={e => setAdminCreds({...adminCreds, password: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <button 
+                    onClick={handleSaveAdminConfig}
+                    className="bg-white/10 hover:bg-white/20 px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-colors"
+                  >
+                    <Shield size={18} className="text-sky-400" /> Update Credentials
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -913,9 +1066,10 @@ export default function App() {
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [config, setConfig] = useState<SiteConfig | null>(null);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [editItem, setEditItem] = useState<PortfolioItem | undefined>(undefined);
   const [lang, setLang] = useState<Lang>('EN');
 
-  useEffect(() => {
+  const fetchPortfolio = () => {
     fetch('/api/portfolio')
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch portfolio');
@@ -924,9 +1078,12 @@ export default function App() {
       .then(setPortfolio)
       .catch(err => {
         console.error('Portfolio fetch error:', err);
-        // Fallback to empty portfolio if API fails
         setPortfolio([]);
       });
+  };
+
+  useEffect(() => {
+    fetchPortfolio();
 
     fetch('/api/config')
       .then(res => {
@@ -947,13 +1104,18 @@ export default function App() {
 
   if (!config) return <div className="h-screen flex items-center justify-center bg-black text-sky-400 animate-pulse">Loading HOMEGROUND...</div>;
 
+  const handleEditPortfolio = (item: PortfolioItem) => {
+    setEditItem(item);
+    setIsAdminOpen(true);
+  };
+
   return (
     <div className="min-h-screen selection:bg-sky-500 selection:text-white overflow-x-hidden">
-      <Navbar onAdminToggle={() => setIsAdminOpen(true)} lang={lang} setLang={setLang} />
+      <Navbar onAdminToggle={() => { setEditItem(undefined); setIsAdminOpen(true); }} lang={lang} setLang={setLang} />
       
       <Hero config={config} lang={lang} />
       <WhyKorea config={config} lang={lang} />
-      <Portfolio items={portfolio} lang={lang} />
+      <Portfolio items={portfolio} lang={lang} onEdit={handleEditPortfolio} />
       <ContactForm lang={lang} />
 
       <footer className="py-12 px-6 border-t border-white/10 bg-black">
@@ -975,7 +1137,7 @@ export default function App() {
         </div>
       </footer>
 
-      {isAdminOpen && <AdminDashboard onClose={() => setIsAdminOpen(false)} />}
+      {isAdminOpen && <AdminDashboard onClose={() => setIsAdminOpen(false)} initialEditItem={editItem} onRefresh={fetchPortfolio} />}
     </div>
   );
 }
