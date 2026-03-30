@@ -287,7 +287,7 @@ const Hero = ({ config, lang }: { config: SiteConfig, lang: Lang }) => {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.2, delay: 0.2 }}
-          className="text-4xl sm:text-5xl md:text-[8rem] lg:text-[10rem] font-serif italic mb-8 leading-none text-gradient tracking-tighter break-words"
+          className="text-[clamp(2.5rem,12vw,10rem)] font-serif italic mb-8 leading-none text-gradient tracking-tighter whitespace-nowrap"
         >
           {lang === 'EN' ? config.heroTitle : t.heroTitle}
         </motion.h1>
